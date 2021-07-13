@@ -1,0 +1,97 @@
+{
+"AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Demo of Cloud Formation ",
+    "Metadata": {
+    
+    },
+    "Parameters": {
+        "InstanceType" : {
+            "Type" : "String",
+            "Default" : "t2.nano",
+            "AllowedValues" : ["t2.nano", "t2.micro", "m1.small", "m1.large"],
+            "Description" : "Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+          },
+        "keypair": {
+            "Type" : "String",
+            "Default" : "cloudops",            
+            "Description" : "Enter the PEM key to connect to your resources"
+
+        },
+        "amiId": {
+            "Type" : "String",
+            "Default" : "ami-0ff8a91507f77f867",            
+            "Description" : "Enter the AMI ID"
+
+        },
+        "vpc_cidr": {
+            "Type" : "String",
+            "Default" : "10.0.0.0/16",            
+            "Description" : "Enter the CIDR For the VPC"
+
+        }   
+    },
+    "Mappings": {
+
+    },
+    "Conditions": {
+
+    },
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock" : {"Ref": "vpc_cidr"},
+                "EnableDnsHostnames" : true,
+                "EnableDnsSupport" : true,
+                "InstanceTenancy" : "Default",
+                "Tags": [
+                    {
+                    "Key": "Name",
+                    "Value": "cfdemovpc"
+                    },
+                    {
+                    "Key": "Environment",
+                    "Value": "Test"
+                    } 
+                ]
+
+            }
+
+        },
+        "PUBLICSUBNET1" :{
+
+        }
+        "EC2" : {                                                                          
+            "Type" : "AWS::EC2::Instance",                                                             
+            "Properties" : {                                                                           
+                "ImageId" : {"Ref": "amiId"},                                                     
+                "InstanceType" : {"Ref": "InstanceType"},                                                             
+                "KeyName" : {"Ref": "keypair"},                                                                               
+                "BlockDeviceMappings" : [                                                                
+                    {                                                                                      
+                    "DeviceName" : "/dev/sdm",                                                           
+                    "Ebs" : {                                                                            
+                        "VolumeType" : "io1",                                                              
+                        "Iops" : 200,                                                                      
+                        "DeleteOnTermination" : false,                                                     
+                        "VolumeSize" : 20                                                                  
+                    }                                                                                    
+                 }                                                                                      
+                ],
+                "Tags": [
+                    {
+                    "Key": "Name",
+                    "Value": "cfdemo"
+                    },
+                    {
+                    "Key": "Environment",
+                    "Value": "Test"
+                    } 
+                ]                                                                                         
+          }                                                                                          
+        }                                                                                            
+    },
+    "Outputs": {
+
+    }
+}

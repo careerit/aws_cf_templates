@@ -1,0 +1,103 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Master stack'
+Parameters:
+  Env:
+    Description: Environment to which the resource belongs to
+    Type: String
+    Default: Dev
+  Prefix:
+    Description: Prefix for all Resources
+    Type: String
+    Default: genx  
+  VPCCIDR:
+    Description: CIDR_Range of the VPC
+    Type: String
+    Default: 10.0.0.0/16
+  AMIID:
+    Description: AMI ID for the ASG Instances
+    Type: String
+    Default: ami-0699a5803f1b692ec
+Resources:
+  MainVPC:
+    Type: AWS::CloudFormation::Stack 
+    Properties:
+      Parameters:
+        VPCCIDR: !Ref VPCCIDR
+        PREFIX: !Ref Prefix
+        ENV: !Ref Env
+      TemplateURL: https://genxcftemplates.s3.amazonaws.com/VPC.yaml                   
+      TimeoutInMinutes: 60  
+  ASG:
+    Type: AWS::CloudFormation::Stack 
+    DependsOn: 
+      - MainVPC
+    Properties:
+      Parameters:
+        ENV: !Ref Env
+        PREFIX: !Ref Prefix
+        AMIID: !Ref AMIID
+        VPCID:
+          Fn::GetAtt:
+            - MainVPC
+            - Outputs.VPCID
+        PrivSubnetA:
+          Fn::GetAtt:
+            - MainVPC
+            - Outputs.PrivSubnetA
+        PrivSubnetB:
+          Fn::GetAtt:
+            - MainVPC
+            - Outputs.PrivSubnetB
+        PrivSubnetC:
+          Fn::GetAtt:
+            - MainVPC
+            - Outputs.PrivSubnetC
+        PubSubnetA:
+          Fn::GetAtt:
+            - MainVPC
+            - Outputs.PubSubnetA
+        PubSubnetB:
+          Fn::GetAtt:
+            - MainVPC
+            - Outputs.PubSubnetB
+        PubSubnetC:
+          Fn::GetAtt:
+            - MainVPC
+            - Outputs.PubSubnetC
+      TemplateURL: https://genxcftemplates.s3.amazonaws.com/ASG.yaml  
+      TimeoutInMinutes: 60           
+Outputs:
+  StackRef:
+    Value: !Ref MainVPC
+  OutputFromNestedStack:
+    Value: !GetAtt MainVPC.Outputs.VPCID
+  WebSG:
+    Value: !Ref MainVPC
+  OutputFromNestedStack:
+    Value: !GetAtt MainVPC.Outputs.SGID
+  PubsubnetA:
+    Value: !Ref MainVPC
+  OutputFromNestedStackA:
+    Value: !GetAtt MainVPC.Outputs.PubSubnetA
+  PubsubnetB:
+    Value: !Ref MainVPC
+  OutputFromNestedStack:
+    Value: !GetAtt MainVPC.Outputs.PubSubnetB
+  PubsubnetC:
+    Value: !Ref MainVPC
+  OutputFromNestedStack:
+    Value: !GetAtt  MainVPC.Outputs.PubSubnetC
+  PrivSubnetA:
+    Value: !Ref MainVPC
+  OutputFromNestedStack:
+    Value: !GetAtt MainVPC.Outputs.PrivSubnetA
+  PrivSubnetB:
+    Value: !Ref MainVPC
+  OutputFromNestedStack:
+    Value: !GetAtt MainVPC.Outputs.PrivSubnetB
+  PrivSubnetC:
+    Value: !Ref MainVPC
+  OutputFromNestedStack:
+    Value: !GetAtt  MainVPC.Outputs.PrivSubnetC
+     

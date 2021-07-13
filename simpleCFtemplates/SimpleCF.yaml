@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance                     
+    Properties:
+      ImageId: ami-0b32c7d613c3681b8
+      InstanceType: t2.micro
+      KeyName: cloudops
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sdm"
+          Ebs:              
+            DeleteOnTermination: True
+            VolumeSize: 20
+      Tags:
+        - Key: Name
+          Value: CFTest 
+        - Key: Environment
+          Value: Testing  
+        - Key: Project
+          Value: LearnCF    
+

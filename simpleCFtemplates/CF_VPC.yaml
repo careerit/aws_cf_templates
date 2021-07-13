@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  VPCCIDR:
+    Description: CIDR Block for the VPC
+    Type: String
+    Default: 10.0.0.0/16
+  PubSubnetACIDR:
+    Description: CIDR Block for the PubSubnetA 
+    Type: String
+    Default: 10.0.1.0/24  
+  amiId:
+    Description: AMI ID for the desired AMI
+    Type: String
+    Default: "ami-0699a5803f1b692ec"
+  VPCNAME:
+    Description: Name of the VPC
+    Type: String
+    Default: CFTest  
+Mappings:
+  PubSubnets:
+    Pubsubnet1:
+      AZ: us-east-1a
+      CIDR: 10.0.0.1.0/24
+    Pubsubnet2:
+      AZ: us-east-1b
+      CIDR: 10.0.0.2.0/24
+    Pubsubnet3:
+      AZ: us-east-1c
+      CIDR: 10.0.0.3.0/24
+      
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: VPCCIDR
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: 
+            Ref: VPCNAME
+        - Key: Environment
+          Value: Testing      
+  MainIGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: CFIGW
+      - Key: Environment
+        Value: Testing      
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref MainIGateway
+  PubSubnetA:     
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      VpcId: !Ref VPC 
+      CidrBlock: 
+        Ref: PubSubnetACIDR
+      Tags:
+        - Key: Name
+          Value: CFPubSubnet
+        - Key: Environment
+          Value: Testing      
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: CFPublicRouteTable 
+        - Key: Environment
+          Value: Testing    
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MainIGateway
+      
+  PublicSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetA
+      RouteTableId: !Ref PublicRouteTable
+  WebSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: WebSG 
+      GroupDescription:  Security For Web Instances
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - Description: Rule to allow 22 from Home
+          CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: -1
+          ToPort: 22 
+        - Description: Rule to allow HTTP from internet
+          CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: -1
+          ToPort: 80          
+      Tags:
+        - Key: Name 
+          Value: WebSG
+        - Key: Environrment
+          Value: Testing         
+  EC2Instance:
+    Type: AWS::EC2::Instance                     
+    Properties:
+      ImageId: 
+        Ref: amiId
+      InstanceType: t2.micro
+      KeyName: cloudops
+      SubnetId: !Ref PubSubnetA
+      SecurityGroupIds: 
+        - !Ref WebSG
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sdm"
+          Ebs:              
+            DeleteOnTermination: True
+            VolumeSize: 20
+      Tags:
+        - Key: Name
+          Value: CFTest 
+        - Key: Environment
+          Value: Testing    
+

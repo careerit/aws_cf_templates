@@ -1,0 +1,76 @@
+{
+"AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Demo of Cloud Formation ",
+    "Metadata": {
+    
+    },
+    "Parameters": {
+        "ec2InstanceType" : {
+            "Type" : "String",
+            "Default" : "t2.micro",
+            "AllowedValues" : ["t2.nano", "t2.micro", "m1.small", "m1.large"],
+            "Description" : "Size of the ec2 instance Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+          },
+        "keypair": {
+            "Type" : "String",
+            "Default" : "cloudops",            
+            "Description" : "Enter the PEM key to connect to your resources"
+
+        },
+        "amiId": {
+            "Type" : "String",
+            "Default" : "ami-0699a5803f1b692ec",            
+            "Description" : "Enter the AMI ID"
+
+        },
+        "MyS3BucketName": {
+            "Type": "String",
+            "Default": "cftestxyz78",
+            "Description": "Name for your S3 bucket"
+        }   
+    },
+    "Mappings": {
+
+    },
+    "Conditions": {
+
+    },
+    "Resources": {
+        "MyEC2Instance" : {                                                                          
+            "Type" : "AWS::EC2::Instance",                                                             
+            "Properties" : {                                                                           
+            "ImageId" : {"Ref": "amiId"},                                                     
+            "InstanceType" : {"Ref": "ec2InstanceType"},                                                             
+            "KeyName" : {"Ref": "keypair"},                                                                               
+            "BlockDeviceMappings" : [                                                                
+                {                                                                                      
+                "DeviceName" : "/dev/sdm",                                                           
+                "Ebs" : {                                               
+                    "VolumeSize" : 20                                                                  
+                }                                                                                    
+              }                                                                                      
+            ],
+            "Tags": [
+                {
+                "Key": "Name",
+                "Value": "cfdemo"
+                },
+                {
+                "Key": "Environment",
+                "Value": "Test"
+                } 
+            ]                                                                                         
+          }                                                                                          
+        },
+        "MyS3Bucket": {
+          "Type": "AWS::S3::Bucket",
+          "Properties": {
+              "BucketName": {"Ref": "MyS3BucketName"}
+          }
+        
+        }  
+    },
+    "Outputs": {
+
+    }
+}

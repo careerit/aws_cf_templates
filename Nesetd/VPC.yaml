@@ -1,0 +1,282 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  VPCCIDR:
+    Description: CIDR Block for the VPC
+    Type: String
+    Default: 10.0.0.0/16
+  PREFIX:
+    Description: Prefix for all resources 
+    Type: String
+    Default: genx
+  ENV:
+    Description: Environment
+    Type: String
+    Default: Dev 
+    AllowedValues: 
+      - Dev
+      - Staging
+      - Production 
+Mappings:
+  PubSubnets:
+    PSN1:      
+      CIDR: 10.0.1.0/24
+    PSN2:   
+      CIDR: 10.0.2.0/24
+    PSN3:   
+      CIDR: 10.0.3.0/24  
+  PrivSubnets:
+    PrSN1:      
+      CIDR: 10.0.11.0/24
+    PrSN2:   
+      CIDR: 10.0.12.0/24
+    PrSN3:   
+      CIDR: 10.0.13.0/24              
+Resources:  
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 
+        Ref: VPCCIDR
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: 
+            !Join
+              - '-'
+              - - !Ref 'PREFIX'
+                - 'vpc'
+        - Key: Environment
+          Value: 
+            Ref: ENV 
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet    
+    Properties:      
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        Fn::Select: 
+        - 0
+        - Fn::GetAZs: ""   
+      CidrBlock: 
+        Fn::FindInMap: [PubSubnets, PSN1, CIDR ]
+      Tags:
+        - Key: Name
+          Value: PublicSubnetA  
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet    
+    Properties:      
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        Fn::Select: 
+        - 1
+        - Fn::GetAZs: ""
+      CidrBlock: 
+        Fn::FindInMap: [PubSubnets, PSN2, CIDR ]
+      Tags:
+        - Key: Name
+          Value: PublicSubnetB  
+  PublicSubnetC:
+    Type: AWS::EC2::Subnet    
+    Properties:      
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        Fn::Select: 
+        - 2
+        - Fn::GetAZs: ""
+      CidrBlock: 
+        Fn::FindInMap: [PubSubnets, PSN3, CIDR ]
+      Tags:
+        - Key: Name
+          Value: PublicSubnetC       
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet    
+    Properties:      
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        Fn::Select: 
+        - 0
+        - Fn::GetAZs: ""
+      CidrBlock: 
+        Fn::FindInMap: [PrivSubnets, PrSN1, CIDR ]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnetA  
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet    
+    Properties:      
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        Fn::Select: 
+        - 1
+        - Fn::GetAZs: ""
+      CidrBlock: 
+        Fn::FindInMap: [PrivSubnets, PrSN2, CIDR ]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnetB  
+  PrivateSubnetC:
+    Type: AWS::EC2::Subnet    
+    Properties:      
+      VpcId: !Ref VPC
+      AvailabilityZone:
+        Fn::Select: 
+        - 2
+        - Fn::GetAZs: ""
+      CidrBlock: 
+        Fn::FindInMap: [PrivSubnets, PrSN3, CIDR ]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnetC    
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: CFIGW
+      - Key: Environment
+        Value: Testing      
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt ElasticIPAddress.AllocationId
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value:             
+            !Join
+              - '-'
+              - - !Ref 'PREFIX'
+                - 'NATGW'
+        - Key: Environment
+          Value:
+            Ref: ENV
+
+  ElasticIPAddress:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: VPC  
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value:             
+          !Join
+            - '-'
+            - - !Ref 'PREFIX'
+              - 'PublicRT'
+  PublicRoute1:            # Private route table can access web via NAT (created below)
+    Type: AWS::EC2::Route
+    DependsOn:
+      - InternetGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      # Route traffic through the NAT Gateway:
+      GatewayId: !Ref InternetGateway
+    
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value:             
+          !Join
+            - '-'
+            - - !Ref 'PREFIX'
+              - 'PrivateRT'
+  PrivateRoute1:            # Private route table can access web via NAT (created below)
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      # Route traffic through the NAT Gateway:
+      NatGatewayId: !Ref NATGateway
+
+ # Route Table Associations
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable  
+  PublicSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetC
+      RouteTableId: !Ref PublicRouteTable    
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTable
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTable  
+  PrivateSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetC
+      RouteTableId: !Ref PrivateRouteTable  
+  # Web Security Group          
+  WebSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: WebSG 
+      GroupDescription:  Security For Web Instances
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - Description: Rule to allow 22 from Home
+          CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: -1
+          ToPort: 22 
+        - Description: Rule to allow HTTP from internet
+          CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: -1
+          ToPort: 80          
+      Tags:
+        - Key: Name 
+          Value: WebSG
+        - Key: Environrment
+          Value: 
+            Ref: ENV  
+Outputs:
+  VPCID:
+    Description: ID of VPC
+    Value: !Ref 'VPC'
+  SGID:
+    Description: ID of the Security Group
+    Value: !Ref 'WebSG'
+  PubSubnetA:
+    Description: OutputDescription
+    Value: !Ref PublicSubnetA
+  PubSubnetB:
+    Description: OutputDescription
+    Value: !Ref PublicSubnetB
+  PubSubnetC:
+    Description: OutputDescription
+    Value: !Ref PublicSubnetC
+  PrivSubnetA:
+    Description: OutputDescription
+    Value: !Ref PrivateSubnetA
+  PrivSubnetB:
+    Description: OutputDescription
+    Value: !Ref PrivateSubnetB
+  PrivSubnetC:
+    Description: OutputDescription
+    Value: !Ref PrivateSubnetC
+  
